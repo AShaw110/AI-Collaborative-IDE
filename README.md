@@ -1,4 +1,4 @@
-# CodeSync: Collaborative Code Editor
+# Collaborative Code Editor
 
 A real-time collaborative cloud IDE built on the MERN stack (MongoDB, Express, React, Node.js). It features WebSocket-based synchronization, remote code execution, and AI-powered debugging.
 
