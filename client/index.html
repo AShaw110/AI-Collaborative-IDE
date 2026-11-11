@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-neutral-950">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="Real-time collaborative code editor with remote execution and AI debugging."
+    />
+    <title>CollabCode — Real-Time Code Editor</title>
+    <link
+      rel="icon"
+      type="image/svg+xml"
+      href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%233b82f6'><path d='M9.4 16.6L4.8 12l4.6-4.6L8 6l-6 6 6 6 1.4-1.4zm5.2 0l4.6-4.6-4.6-4.6L16 6l6 6-6 6-1.4-1.4z'/></svg>"
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <body class="h-full overflow-hidden text-neutral-100 antialiased selection:bg-blue-500 selection:text-white">
+    <noscript>
+      <div style="padding: 2rem; font-family: sans-serif; background-color: #121212; color: #ffffff;">
+        <h1>JavaScript Required</h1>
+        <p>CollabCode requires JavaScript to synchronize real-time edits and execute code.</p>
+      </div>
+    </noscript>
+    <div id="root" class="h-full w-full flex flex-col"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>
