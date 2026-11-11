@@ -1,152 +1,62 @@
-# CollabCode
+# CodeSync: Collaborative Code Editor
 
-Real-time collaborative code editor built on the MERN stack (MongoDB, Express, React, Node.js) with Socket.io synchronization, remote sandboxed execution via Piston, and AI debugging via Google Gemini.
+A real-time collaborative cloud IDE built on the MERN stack (MongoDB, Express, React, Node.js). It features WebSocket-based synchronization, remote code execution, and AI-powered debugging.
 
-## Architecture
+## Core Features
 
-### Backend (`server/`)
+* **Live Collaboration:** Real-time keystroke synchronization using Socket.io, with sessions isolated into unique rooms.
+* **Multi-Language Support:** Native syntax highlighting and live code execution for C++, Python, and JavaScript via the Monaco Editor and Piston API.
+* **AI Debugger:** Integrated Google Gemini API to analyze code snippets and generate debugging hints.
+* **Optimized Persistence:** 500ms debounced auto-saves to MongoDB to minimize database write operations during active typing.
 
-The Express backend follows a three-layer separation:
+## Tech Stack
 
-```
-Routes (HTTP mapping) -> Controllers (validation & orchestration) -> Services (external APIs)
-```
-
-- **Routes** (`src/routes/`) declare endpoint paths and HTTP verbs without business logic.
-- **Controllers** (`src/controllers/`) validate payloads, enforce HTTP status codes (`200`, `201`, `400`, `404`, `500`, `502`), and delegate I/O.
-- **Services** (`src/services/`) encapsulate external integrations (`pistonService.js` for Piston v2, `aiService.js` for `@google/genai`).
-- **Real-time Sync** (`src/socket/socketHandler.js`) shares the HTTP server port via `http.createServer(app)` and broadcasts room-scoped updates with `socket.to(roomId)` so the sender does not receive echoed changes.
-- **Persistence** (`src/models/Room.js`) stores `{ roomId, language, codeContent }` with a unique index on `roomId` and Mongoose timestamps.
-
-### Frontend (`client/`)
-
-- **Routing**: `react-router-dom` routes `/` (`LandingPage`) and `/editor/:roomId` (`EditorPage`).
-- **Editor**: `@monaco-editor/react` configured for JavaScript, C++, and Python.
-- **Synchronization**: `useSocket` manages Socket.io lifecycle and uses an `isRemoteUpdate` ref to prevent infinite broadcast loops when applying incoming `code-update` events.
-- **Auto-save**: `useDebounce` coalesces keystrokes (500ms) before issuing `PUT /api/rooms/:roomId`, skipping redundant writes when the snapshot matches the last persisted state.
-- **Accessibility**: Semantic landmarks (`<main>`, `<nav>`, `<section>`, `<aside>`), skip-to-content link, `aria-live` status/output regions, `:focus-visible` outlines, and a portal-based `Modal` with focus trapping and restoration.
-
-## Prerequisites
-
-- Node.js >= 18
-- MongoDB running locally or via MongoDB Atlas
-- Google Gemini API key
+* **Frontend:** React.js, Tailwind CSS, Monaco Editor
+* **Backend:** Node.js, Express.js, Socket.io
+* **Database:** MongoDB (Mongoose)
+* **External APIs:** Piston v2 (Code Execution), Google Gemini (AI Debugging)
 
 ## Local Setup
 
-### 1. Backend
+### Prerequisites
+* Node.js (v18+)
+* MongoDB (Local instance or Atlas URI)
+* Google Gemini API Key
 
-```bash
-cd server
-cp .env.example .env
-npm install
-npm run dev
-```
+### 1. Start the Backend
 
-Update `server/.env` with your `MONGODB_URI` and `GEMINI_API_KEY`. The server listens on `http://localhost:5000`.
+Open a terminal and navigate to the server directory:
 
-### 2. Frontend
+    cd server
+    cp .env.example .env
+    npm install
+    npm run dev
 
-```bash
-cd client
-npm install
-npm run dev
-```
+Note: Add your MONGODB_URI and GEMINI_API_KEY to the newly created server/.env file. The server runs on port 5000.
 
-The Vite dev server runs on `http://localhost:5173` and proxies `/api` and `/socket.io` requests to `http://localhost:5000`.
+### 2. Start the Frontend
 
-## Environment Variables (`server/.env`)
+Open a second terminal and navigate to the client directory:
+
+    cd client
+    npm install
+    npm run dev
+
+The React app runs on port 5173 and automatically proxies API requests to the backend.
+
+## Environment Variables (server/.env)
 
 | Variable | Required | Default | Description |
-| --- | --- | --- | --- |
-| `PORT` | No | `5000` | HTTP/WebSocket server port |
-| `MONGODB_URI` | Yes | `mongodb://localhost:27017/collab-editor` | MongoDB connection string |
-| `GEMINI_API_KEY` | For `/api/debug` | — | Google Gemini API key |
-| `GEMINI_MODEL` | No | `gemini-3.8-flash` | Gemini model identifier |
-| `CLIENT_ORIGIN` | No | `http://localhost:5173` | Allowed CORS origin |
+| :--- | :--- | :--- | :--- |
+| PORT | No | 5000 | Backend HTTP/WebSocket server port |
+| MONGODB_URI | Yes | mongodb://localhost:27017/collab-editor | MongoDB connection string |
+| GEMINI_API_KEY | Yes | — | Required for the AI debugging feature |
+| GEMINI_MODEL | No | gemini-3.8-flash | Specific Gemini model identifier |
 
-## REST API
+## System Architecture
 
-### `GET /api/rooms/:roomId`
-Retrieves an existing room (`200`) or creates one with default JavaScript starter content (`201`).
+The Express backend separates routing, business logic, and external services for maintainability.
 
-### `PUT /api/rooms/:roomId`
-Updates `codeContent` and/or `language` for an existing room (`200`), or returns `404` if the room does not exist.
-
-### `POST /api/execute`
-Request body: `{ "code": string, "language": "javascript" | "cpp" | "python", "stdin"?: string }`
-
-Executes the code against the Piston v2 API and returns `{ success: true, data: { stdout, stderr, exitCode, compileOutput } }`. Returns `400` for invalid input or unsupported languages, and `502` on upstream failures.
-
-### `POST /api/debug`
-Request body: `{ "code": string, "language": string }`
-
-Queries the Gemini API and returns `{ success: true, hints }`. Returns `400` for invalid input, `500` if `GEMINI_API_KEY` is unconfigured, and `502` on upstream AI errors.
-
-### `GET /health`
-Returns server health status and uptime.
-
-## Socket.io Events
-
-| Event | Direction | Payload | Description |
-| --- | --- | --- | --- |
-| `join-room` | Client -> Server | `{ roomId }` | Joins a room channel |
-| `room-joined` | Server -> Client | `{ roomId, socketId, timestamp }` | Confirms room membership |
-| `code-change` | Client -> Server | `{ roomId, code }` | Submits local editor buffer |
-| `code-update` | Server -> Client | `{ code, senderId, timestamp }` | Broadcasts buffer to other peers |
-| `language-change` | Client -> Server | `{ roomId, language }` | Submits language selection |
-| `language-update` | Server -> Client | `{ language, senderId }` | Broadcasts language to other peers |
-
-## Project Structure
-
-```text
-collaborative-code-editor/
-├── README.md
-├── client/
-│   ├── index.html
-│   ├── package.json
-│   ├── postcss.config.js
-│   ├── tailwind.config.js
-│   ├── vite.config.js
-│   └── src/
-│       ├── App.jsx
-│       ├── main.jsx
-│       ├── components/
-│       │   ├── CodeEditor.jsx
-│       │   ├── DebugPanel.jsx
-│       │   ├── EditorPage.jsx
-│       │   ├── LandingPage.jsx
-│       │   ├── Modal.jsx
-│       │   ├── OutputPanel.jsx
-│       │   └── Toolbar.jsx
-│       ├── hooks/
-│       │   ├── useDebounce.js
-│       │   └── useSocket.js
-│       ├── services/
-│       │   └── api.js
-│       └── styles/
-│           └── index.css
-└── server/
-    ├── .env.example
-    ├── package.json
-    └── src/
-        ├── app.js
-        ├── server.js
-        ├── config/
-        │   └── db.js
-        ├── controllers/
-        │   ├── debugController.js
-        │   ├── executeController.js
-        │   └── roomController.js
-        ├── models/
-        │   └── Room.js
-        ├── routes/
-        │   ├── debugRoutes.js
-        │   ├── executeRoutes.js
-        │   └── roomRoutes.js
-        ├── services/
-        │   ├── aiService.js
-        │   └── pistonService.js
-        └── socket/
-            └── socketHandler.js
-```
+* **REST API:** Manages 4 core endpoints for room state, remote compilation (/api/execute), and AI hints (/api/debug).
+* **WebSockets:** Uses join-room, code-update, and language-update events to broadcast changes. Implements a client-side reference guard to prevent WebSocket broadcast echo loops when multiple users type simultaneously.
+* **Database Schema:** Stores room state (roomId, language, codeContent) with a unique index on roomId to handle concurrent connections safely.
